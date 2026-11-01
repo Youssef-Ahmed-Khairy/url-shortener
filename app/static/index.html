@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>URL Shortener</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 640px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        input {
+            width: 65%;
+            padding: 0.5rem;
+        }
+
+        button {
+            padding: 0.5rem 0.8rem;
+        }
+
+        li {
+            margin: 0.7rem 0;
+        }
+
+        .error {
+            color: #b00020;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>URL Shortener</h1>
+    <input id='url' placeholder='https://example.com/a/very/long/link'>
+    <button id='go'>Shorten</button>
+    <p id='msg'></p>
+    <ul id='links'></ul>
+
+    <script>
+        const urlInput = document.getElementById('url');
+        const msg = document.getElementById('msg');
+        const list = document.getElementById('links');
+
+        async function loadLinks() {
+            const res = await fetch('/api/links');
+            const links = await res.json();
+            list.textContent = '';
+            for (const link of links) {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = '/' + link.code;
+                a.target = '_blank';
+                a.textContent = location.host + '/' + link.code;
+                li.append(a, ' - ' + link.url + ' (' + link.clicks + ' clicks) ');
+                const del = document.createElement('button');
+                del.textContent = 'Delete';
+                del.onclick = async () => {
+                    await fetch('/api/links/' + link.code, { method: 'DELETE' });
+                    loadLinks();
+                };
+                li.append(del);
+                list.append(li);
+            }
+        }
+
+        async function shorten() {
+            msg.textContent = '';
+            msg.className = '';
+            const res = await fetch('/api/links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: urlInput.value }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                msg.className = 'error';
+                msg.textContent = typeof data.detail === 'string' ? data.detail : 'Please enter a valid URL';
+                return;
+            }
+            urlInput.value = '';
+            loadLinks();
+        }
+
+        document.getElementById('go').onclick = shorten;
+        loadLinks();
+    </script>
+</body>
+
+</html>
